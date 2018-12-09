@@ -13,8 +13,26 @@ from time import time
 #from rover_msgs import wheelenc
 wack = -999
 
+class NavState:
+    Off = 0
+    Done = 1
+    Turn = 10
+    Drive = 11
+    SearchFaceNorth = 20
+    SearchFace120 = 21
+    SearchFace240 = 22
+    SearchFace360 = 23
+    SearchTurn = 24
+    SearchDrive = 25
+    TurnToBall = 28
+    DriveToBall = 29
+    TurnAroundObs = 30
+    DriveAroundObs = 31
+    SearchTurnAroundObs = 32
+    SearchDriveAroundObs = 33
+    Unknown = 255
 
-class filterClass:
+class FilterClass:
     def __init__(self ):#, time_):
         # prev
         global wack
@@ -35,6 +53,9 @@ class filterClass:
         self.deltatime = wack
         self.time_of_IMU = time()
         self.update = True
+        self.is_turning = False # Is the rover turning.
+        self.bearing = wack # Bearing of rover.
+        self.initial_gyro = wack # Initial gyro value.
 
 
     def gps_callback(self, channel, msg):
@@ -96,35 +117,64 @@ async def publish_Odometry():
 
         await asyncio.sleep(0.1)
 
-    def stationary():
+    def stationary(self):
+        """Determine if rover is stationary."""
+        if self.navstatus == NavState.Off or \
+           self.navstatus == NavState.Done:
+            return True
+        return False
 
+    def turning(self):
+        """Determine if rover is turning."""
+        if self.navstatus == NavState.Turn or \
+           self.navstatus == NavState.SearchTurn or \
+           self.navstatus == NavState.SearchFaceNorth or \
+           self.navstatus == NavState.SearchFace120 or \
+           self.navstatus == NavState.SearchFace240 or \
+           self.navstatus == NavState.SearchFace360 or \
+           self.navstatus == NavState.TurnToBall or \
+           self.navstatus == NavState.TurnAroundObs or \
+           self.navstatus == NavState.SearchTurnAroundObs:
+            return True
+        return False
 
-        return True
+    def driving(self):
+        """Determine if rover is driving."""
+        if self.navstatus == NavState.Drive or \
+           self.navstatus == NavState.SearchDrive or \
+           self.navstatus == NavState.DriveToBall or \
+           self.navstatus == NavState.DriveAroundObs or \
+           self.navstatus == NavState.SearchDriveAroundObs:
+            return True
+        return False
 
-    def turning():
+    def filter_bearing(self):
+        if self.turning() == True: 
+            if not self.is_turning:
+                self.is_turning = False
+                return self.bearing
+            # Save initial gyro value on first loop of turning.
+            # Subtract gyro value from saved initial value to get difference.
+            # Fuse mag value with gyro to average it.
+        elif self.driving() == True:
+            self.is_turning = False
+            pass
+        elif self.stationary() == True:
+            self.is_turning = False
+            pass
+        else:
+            print('shitz fukd, check your weights homie')
 
-
-        return True
-
-    def driving():
-
-
-        return True
+    def filter_location(self):
+        pass
 
     # actual kalman filtering
-    # class filter:: filter_function()
-    def filter_function():
+    # class filter:: filter()
+    def filter(self):
 
         clean_lat_min, clean_lat_deg, clean_long_min, clean_long_deg = 0,0,0,0
         clean_bearing , clean_ground_speed = 0 , 0
-        if turning() == True: 
-        
-        elif driving() == True:
-
-        elif stationary() == True:
-
-        else:
-            print('shitz fukd, check your weights homie')
+        clean_bearing = self.filter_bearing()
 
 
         return clean_lat_min, clean_lat_deg, clean_long_min, clean_long_deg , clean_bearing , clean_ground_speed
