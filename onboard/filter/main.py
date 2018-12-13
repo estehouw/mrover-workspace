@@ -36,7 +36,7 @@ class FilterClass:
     def __init__(self ):#, time_):
         # prev
         global wack
-        self.mag_bearing = wack
+        self.mag_bearing = wack # TODO Need to read in mag_bearing correctly.
         self.gx , self.gy, self.gz = wack, wack, wack
         self.accx , self.accy, self.accz = wack , wack , wack
         self.lat_deg = wack
@@ -55,7 +55,9 @@ class FilterClass:
         self.update = True
         self.is_turning = False # Is the rover turning.
         self.bearing = wack # Bearing of rover.
-        self.initial_gyro = wack # Initial gyro value.
+        self.prev_gyro_x = wack # Previous gyro x value.
+        self.prev_gyro_y = wack # Previous gyro y value.
+        self.prev_gyro_z = wack # Previous gyro z value.
 
 
     def gps_callback(self, channel, msg):
@@ -76,6 +78,7 @@ class FilterClass:
         self.gx , self.gy, self.gz = m.gyrox , m.gyroy, m.gyroz
         self.deltatime = time() - self.time_of_IMU
         self.time_of_IMU = time()
+        self.mag_bearing = m.mag;  # TODO: This was not in here originally, m.mag() is probably not actual name, just placeholder.
         self.updateFlag = True
         return None
 
@@ -111,7 +114,7 @@ async def publish_Odometry():
         #     await rover.talons[Talons.arm_joint_b.value].get_enc_pos() or 0)
         # ec.joint_c = int(
         #     await rover.talons[Talons.arm_joint_c.value].get_enc_pos() or 0)
-        # do this^    
+        # do this^
 
         lcm_.publish('/Odometry', od.encode())
 
@@ -149,13 +152,22 @@ async def publish_Odometry():
         return False
 
     def filter_bearing(self):
-        if self.turning() == True: 
+        if self.turning() == True:
             if not self.is_turning:
-                self.is_turning = False
-                return self.bearing
-            # Save initial gyro value on first loop of turning.
-            # Subtract gyro value from saved initial value to get difference.
+            # Save prev gyro value on first loop of turning.
+            # Subtract gyro value from saved previous value to get difference.
             # Fuse mag value with gyro to average it.
+                self.is_turning = True;
+                self.prev_gyro_x = self.gx
+                self.prev_gyro_y = self.gy
+                self.prev_gyro_z = self.gz
+                self.bearing = (self.bearing+self.mag_bearing)*0.5
+            else
+                self.bearing = self.bearing + self.deltatime*(self.gyrox - self.prev_gyro_x) # TODO: not sure what plane is the desired bearing plane;
+                self.bearing = (self.bearing + self.mag_bearing)*0.5
+                self.prev_gyro_x = self.gx
+                self.prev_gyro_y = self.gy
+                self.prev_gyro_z = self.gz
         elif self.driving() == True:
             self.is_turning = False
             pass
