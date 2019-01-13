@@ -8,3 +8,5 @@ build/
 .node-gyp
 **/node_modules/
 .idea
+.DS_Store
+
