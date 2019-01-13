@@ -7,3 +7,4 @@ build/
 .mrover
 .node-gyp
 **/node_modules/
+.idea

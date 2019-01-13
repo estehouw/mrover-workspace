@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  onboard_nav:
+    build: .
+    command: bash -c "./jarvis build ./onboard/nav && ./jarvis exec onboard_nav"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - lcm_bridge_server
+  simulators_nav:
+    build: .
+    command: bash -c "./jarvis build ./simulators/nav && ./jarvis exec simulators_nav"
+    ports:
+      - "8000:8000"
+      - "8010:8010"
+    depends_on:
+      - onboard_nav
+  lcm_bridge_server:
+    build: .
+    command: bash -c "./jarvis build ./lcm_bridge/server && ./jarvis exec lcm_bridge_server"
+    ports:
+      - "8000:8000"
