@@ -2,11 +2,11 @@ import time
 import enum
 from rover_common import aiolcm
 import asyncio
-from rover_msgs import Bearing
-from rover_msgs import Odometry
+from rover_msgs import IMU
+from rover_msgs import GPS, OdometryF
 from rover_msgs import NavStatus
 from rover_common.aiohelper import run_coroutines
-from .rawmessages import mag_bearing
+from .rawmessages import raw_imu
 from .rawmessages import raw_gps
 from .rawmessages import nav_status
 from .rawmessages import clean_odom
@@ -14,7 +14,7 @@ from .rawmessages import clean_odom
 # from rover_msgs import Wheelenc
 # from rover_msgs import IMU
 
-UNDEFINED = 0
+UNDEFINED = None
 INFREQUENCY = 0.2  # inverse of frequency of slowest sensor (probably GPS)
 delta_time = 0.01
 
@@ -47,8 +47,6 @@ Filter Goals:
     Use to correct pitch^
 
 """
-
-
 
 class NavState(enum.Enum):
     Off = 0
@@ -119,12 +117,12 @@ class FilterClass:
         m = Odometry.decode(msg)
         self.gps.updateGPS(m)
         #add filter later, dont cop
-        self.odomf.copy_gps(self.gps)
+        #self.odomf.copy_gps(self.gps)
         print('gps track angle: ' + str(self.gps.track_theta))
         return None
 
     #everything in here that says imu should probably say mag?
-    def mag_bearing_callback(self, channel, msg): 
+    def imu_callback(self, channel, msg): 
         print('-------------- @time : ' + str(time.clock()))
         print('imu callback called')
         m = Bearing.decode(msg)
@@ -143,10 +141,6 @@ class FilterClass:
             print("not turning")
         print('nav status: ' + str(self.navstat.navState))
         return None
-    
-    ##############
-    #TODO: make IMU callbacks for accel and gyro velocities    
-    ##############
 
     def stationary(self):
         """Determine if rover is stationary."""
