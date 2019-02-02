@@ -87,7 +87,7 @@ int main()
     lcmObject.subscribe( "/auton", &LcmHandlers::autonState, &lcmHandlers );
     lcmObject.subscribe( "/course", &LcmHandlers::course, &lcmHandlers );
     lcmObject.subscribe( "/obstacle", &LcmHandlers::obstacle, &lcmHandlers );
-    lcmObject.subscribe( "/odometry", &LcmHandlers::odometry, &lcmHandlers );
+    lcmObject.subscribe( "/odometryf", &LcmHandlers::odometry, &lcmHandlers );
     lcmObject.subscribe( "/tennis_ball", &LcmHandlers::tennisBall, &lcmHandlers );
 
     while( lcmObject.handle() == 0 )

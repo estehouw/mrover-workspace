@@ -45,8 +45,8 @@ class FilterClass:
         print('gps callback called')
         m = GPS.decode(msg)
         self._gps.updateGPS(m)
-        self._odomf.copy_gps(self.gps)
-        print('gps track angle: ' + str(self._gps.track_theta))
+        self._odomf.copy_gps(self._gps)
+        print('gps track angle: ' + str(self._gps._track_theta))
         return None
 
     def imu_bearing_callback(self, channel, msg):
@@ -66,38 +66,38 @@ class FilterClass:
             print('turning')
         else:
             print("not turning")
-        print('nav status: ' + str(self._navstat.navState))
+        print('nav status: ' + str(self._navstat._navState))
         return None
 
     def stationary(self):
         """Determine if rover is stationary."""
-        if self._navstat == NavState.Off or \
-           self._navstat == NavState.Done:
+        if self._navstat._navState == NavState.Off or \
+           self._navstat._navState == NavState.Done:
             return True
         return False
 
     def turning(self):
         """Determine if rover is turning."""
-        if self.navstat.navState == NavState.Turn or \
-           self.navstat.navState == NavState.SearchTurn or \
-           self.navstat.navState == NavState.SearchFaceNorth or \
-           self.navstat.navState == NavState.SearchFace120 or \
-           self.navstat.navState == NavState.SearchFace240 or \
-           self.navstat.navState == NavState.SearchFace360 or \
-           self.navstat.navState == NavState.TurnToBall or \
-           self.navstat.navState == NavState.TurnAroundObs or \
-           self.navstat.navState == NavState.SearchTurnAroundObs:
+        if self._navstat._navState == NavState.Turn or \
+           self._navstat._navState == NavState.SearchTurn or \
+           self._navstat._navState == NavState.SearchFaceNorth or \
+           self._navstat._navState == NavState.SearchFace120 or \
+           self._navstat._navState == NavState.SearchFace240 or \
+           self._navstat._navState == NavState.SearchFace360 or \
+           self._navstat._navState == NavState.TurnToBall or \
+           self._navstat._navState == NavState.TurnAroundObs or \
+           self._navstat._navState == NavState.SearchTurnAroundObs:
             return True
 
         return False
 
     def driving(self):
         """Determine if rover is driving."""
-        if self.navstat.navState == NavState.Drive or \
-           self.navstat.navState == NavState.SearchDrive or \
-           self.navstat.navState == NavState.DriveToBall or \
-           self.navstat.navState == NavState.DriveAroundObs or \
-           self.navstat.navState == NavState.SearchDriveAroundObs:
+        if self._navstat._navState == NavState.Drive or \
+           self._navstat._navState == NavState.SearchDrive or \
+           self._navstat._navState == NavState.DriveToBall or \
+           self._navstat._navState == NavState.DriveAroundObs or \
+           self._navstat._navState == NavState.SearchDriveAroundObs:
             return True
 
         return False
@@ -111,8 +111,9 @@ class FilterClass:
             print('async af')
             # self.filter_bearing()
             msg = self._odomf.create_lcm()
-            lcm_.publish('/odometryf', msg.encode())
-            await asyncio.sleep(1)
+            if msg:
+                lcm_.publish('/odometryf', msg.encode())
+            await asyncio.sleep(0.1)
 
         return None
 
@@ -122,7 +123,7 @@ def main():
     filter_ = FilterClass()
 
     lcm_.subscribe("/gps", filter_.gps_callback)
-    lcm_.subscribe("/imu", filter_.mag_bearing_callback)
+    lcm_.subscribe("/imu", filter_.imu_bearing_callback)
     lcm_.subscribe("/nav_status", filter_.navstat_callback)
 
     run_coroutines(lcm_.loop(), filter_.publishOdom(lcm_))

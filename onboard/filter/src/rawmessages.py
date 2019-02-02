@@ -13,13 +13,22 @@ class clean_odom:
         self._speed = None
 
     def create_lcm(self):
+        # If some part of Odom is uninitialized, return None
+        if not (self._latitude_deg and
+                self._latitude_min and
+                self._longitude_deg and
+                self._longitude_min and
+                self._bearing_deg):
+            return None
+
+        print('valid data')
         msg = OdometryF()
         msg.latitude_deg = self._latitude_deg
         msg.latitude_min = self._latitude_min
         msg.longitude_deg = self._longitude_deg
         msg.longitude_min = self._longitude_min
         msg.bearing_deg = self._bearing_deg
-        msg.speed = self._speed
+        msg.speed = -1
         return msg
 
     def copy_gps(self, gps):
@@ -47,9 +56,9 @@ class raw_imu:
         self._time_of_IMU = time.clock()
 
     def update_imu_bearing(self, message):
-        self._acc_x = message.acc_x
-        self._acc_y = message.acc_y
-        self._acc_z = message.acc_z
+        self._acc_x = message.accel_x
+        self._acc_y = message.accel_y
+        self._acc_z = message.accel_z
         self._gyro_x = message.gyro_x
         self._gyro_y = message.gyro_y
         self._gyro_z = message.gyro_z
