@@ -1,5 +1,4 @@
 #include "camera.hpp"
-#include "config.h"
 
 #if ZED_SDK_PRESENT
 #include <sl/Camera.hpp>
@@ -76,7 +75,7 @@ Camera::Impl::~Impl() {
 /*void Camera::Impl::deleteZed(){
 	delete this;
 }*/
-#elif OFFLINE_TEST
+#else //if OFFLINE_TEST
 #include <sys/types.h>
 #include <dirent.h>
 #include <string>
@@ -94,6 +93,7 @@ private:
   std::vector<std::string> img_names;
   int idx_curr_img;
 
+  std::string path;
   std::string rgb_path;
   DIR * rgb_dir;
   std::string depth_path;
@@ -106,9 +106,10 @@ Camera::Impl::~Impl() {
 }
 
 Camera::Impl::Impl() {
-  std::cout<<"Please input the RGB image folder and the Depth image folder (Note that the corresponding images in the two folders have the same name): ";
-  std::cin>>rgb_path;
-  std::cin>>depth_path;
+  std::cout<<"Please input the folder path (there should be a rgb and depth existing in this folder): ";
+  std::cin>>path;
+  rgb_path = path + "/rgb";
+  depth_path = path + "/depth";
   rgb_dir = opendir(rgb_path.c_str() );
   depth_dir = opendir(depth_path.c_str() );
   if ( NULL==rgb_dir || NULL==depth_dir ) {
@@ -171,30 +172,6 @@ cv::Mat Camera::Impl::depth() {
   return img;
 }
 
-#else
-#include <percepsim/percepsim.hpp>
-
-class Camera::Impl {
-public:
-	bool grab();
-
-	cv::Mat image();
-	cv::Mat depth();
-private:
-	Perception::SimulatedCamera cam_;
-};
-
-bool Camera::Impl::grab() {
-	return this->cam_.grab();
-}
-
-cv::Mat Camera::Impl::image() {
-	return this->cam_.retrieve_image();
-}
-
-cv::Mat Camera::Impl::depth() {
-	return this->cam_.retrieve_depth();
-}
 #endif
 
 Camera::Camera() : impl_(new Camera::Impl) {

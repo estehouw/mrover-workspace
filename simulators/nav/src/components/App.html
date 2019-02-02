@@ -19,9 +19,16 @@
             <input type="number" bind:value="radius"/>
         </label></p>
         <p>
-            <label>Test Case: </label>
+            <label>Upload: </label>
             <input id="files" name="files[]" type="file"/>
         </p>
+        <p>
+            <label>Download: </label>
+            <!-- <label for="input-fileName"></label> -->
+            <input type="text" class="form-control" id="input-filename" value="textFile" placeholder="Enter file name">
+            <input type="button" id="dwn-btn" value="Download"/>
+        </p>
+
     </div>
 
     <div id="sidebar">
@@ -98,14 +105,27 @@
         {{#each rocks as rock, i}}
         <div class="display rock_display">
             <SimulatedItemDisplay
-                            title="Rock {{ i }}"
-                            item="{{ rock }}"
-                            rover="{{ odom }}"
-                            on:click='splice("rocks", i, 1)'>
+                title="Rock {{ i }}"
+                item="{{ rock }}"
+                rover="{{ odom }}"
+                on:click='splice("rocks", i, 1)'>
             </SimulatedItemDisplay>
         </div>
         {{/each}}
     </div>
+
+    <script>
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+    </script>
 </div>
 
 <script>
@@ -124,6 +144,7 @@
     export default {
         oncreate() {
             document.getElementById('files').addEventListener('change', this.handleFileSelect);
+            document.getElementById('dwn-btn').addEventListener('click', this.handleDownloadTest);
             app = this;
         },
 
@@ -192,6 +213,7 @@
                     case 31: return 'Drive Around Obstacle';
                     case 32: return 'Search Turn Around Obstacle';
                     case 33: return 'Search Drive Around Obstacle';
+                    case 34: return 'Change Search Type';
                     default: return 'Unknown';
                 }
             },
@@ -218,6 +240,16 @@
                 })(files[0]);
             },
 
+            handleDownloadTest: function(event) {
+                var test_case_data = JSON.stringify({ waypoints: app._state.waypoints,
+                                                      rocks: app._state.rocks,
+                                                      tennis_balls: app._state.tennis_balls },
+                                                    null,
+                                                    4)
+                var filename = document.getElementById('input-filename').value + ".json";
+                download(filename, test_case_data);
+            },
+
             apply_joystick: function(stick) {
                 this.set({
                     forward_back: stick.forward_back,
@@ -233,10 +265,10 @@
                         is_auton: this.get('enabled')
                     });
                     const odom = this.get("odom");
-                    this.fire("bearing", {
+                    this.fire("imu", {
                         bearing: odom.bearing_deg
                     });
-                    this.fire("odom", {
+                    this.fire("gps", {
                         latitude_deg: odom.latitude_deg|0,
                         latitude_min: odom.latitude_min,
                         longitude_deg: odom.longitude_deg|0,
