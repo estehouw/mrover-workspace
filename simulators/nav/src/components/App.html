@@ -265,7 +265,7 @@
                         is_auton: this.get('enabled')
                     });
                     const odom = this.get("odom");
-                    this.fire("bearing", {
+                    this.fire("imu", {
                         bearing: odom.bearing_deg
                     });
                     this.fire("odom", {
