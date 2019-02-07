@@ -7,12 +7,11 @@ from rover_msgs import IMU, GPS, NavStatus
 from rover_common.aiohelper import run_coroutines
 from .rawmessages import raw_imu, raw_gps, nav_status, clean_odom
 
-# from rover_msgs import Wheelenc
-# from rover_msgs import IMU
 
 UNDEFINED = None
 INFREQUENCY = 0.2  # inverse of frequency of slowest sensor (probably GPS)
 delta_time = 0.01
+
 
 class FilterConfig():
     def __init__(self):
@@ -25,47 +24,17 @@ class FilterConfig():
         self.gps_ground_speed_weight = .5
         self.calculated_velocity_weight = .5
         self.update_rate = .1
-        self.meters_to_latitude_minutes = 0.0005389625 # minutes/meters
-        self.EARTH_RADIUS = 6371000 # meters
-        self.EARTH_CIRCUM = 40075000 # meters
+        self.meters_to_latitude_minutes = 0.0005389625
+        self.EARTH_RADIUS = 6371000
+        self.EARTH_CIRCUM = 40075000
         self.meters_to_longitude_minutes = None
-        
-    def generate_meters_to_longitude_minutes(self, lat_deg, lat_min):
-        return 60 / ( self.EARTH_CIRCUM * cos(radians(lat_deg + lat_min)) / 360)
 
+    def meters_to_long_min(self, lat_deg, lat_min):
+        return 60 / (self.EARTH_CIRCUM * cos(radians(lat_deg + lat_min)) / 360)
 
 
 filterconfig = FilterConfig()
 
-"""
-Filter Goals:
-
-    -Input:
-        accel from imu: x, y, z
-        gyro from imu: x y z velocities        
-        mag bearing
-        GPS track angle
-        rover state
-        GPS ground speed
-        GPS position (lat deg, lon deg, lat min, lon min)
-        
-                                                        
-                
-    -Output:
-        pitch
-        velocity
-        gps:
-            lat_min
-            lat_deg
-            lon_min
-            lon_deg
-        bearing
-
-
-    Can use g vector when sitting still to determine which way is down
-    Use to correct pitch^
-
-"""
 
 class NavState(enum.Enum):
     Off = 0
@@ -86,11 +55,13 @@ class NavState(enum.Enum):
     SearchDriveAroundObs = 33
     Unknown = 255
 
+
 class raw_accel:
     def __init__(self, x, y, z):
         self.x = x
         self.y = y
         self.z = z
+
 
 class absolute_accel:
     def __init__(self, north, east, z):
@@ -98,17 +69,20 @@ class absolute_accel:
         self.east = east
         self.z = z
 
+
 class gyro:
     def __init__(self, pitch, roll, yaw):
         self.pitch = pitch
         self.roll = roll
         self.yaw = yaw
 
+
 class absolute_vel:
     def __init__(self, north, east, z):
         self.north = north
         self.east = east
         self.z = z
+
 
 class gps:
     def __init__(self, lat_deg, lat_min, lon_deg, lon_min):
@@ -126,8 +100,6 @@ class FilterClass:
         self._odomf = clean_odom()
         self._vel = absolute_vel(0, 0, 0)
         self._pitch = 0
-        #TODO: accel object = from raw imu 
-        #TODO: gyro object = from raw imu
 
     def gps_callback(self, channel, msg):
         print('-------------- @time : ' + str(time.clock()))
@@ -191,25 +163,10 @@ class FilterClass:
 
         return False
 
-    def filter_bearing():
-        return None
-
-    # this function is run as a co-routine for publishing fused odometry
-    async def publishOdom(self, lcm_):
-        while True:
-            print('async af')
-            # self.filter_bearing()
-            # self.filter_location()            
-            msg = self._odomf.create_lcm()
-            lcm_.publish('/odometryf', msg.encode())
-            await asyncio.sleep(filterconfig.update_rate)
-
-        return None
-
-    ### Postion Filter Logic
     def update_pitch(self):
         '''
-        Updates the pitch angle used to correct the forward acceleration of the rover
+        Updates the pitch angle used to correct
+        the forward acceleration of the rover
         TODO Correct using g vector
         :return:
         '''
@@ -220,7 +177,8 @@ class FilterClass:
         """
         Converts the imu data to absolute coordinite system used by the gps
         and corrects for the pitch angle, also updates the z_acceleration
-        :return: absolute_accel object containing the acceleration in North, East, And Z Directions
+        :return: absolute_accel object containing
+        the acceleration in North, East, And Z Directions
         """
         bearing = self._odomf.bearing
         pitch = self._pitch
@@ -232,8 +190,10 @@ class FilterClass:
 
     def decompose_ground_speed(self):
         """
-        Breaks the ground speed velocity into components aligned with gps coordinate system
-        :return: vel object containing the velocity in the North, East and Z Directions
+        Breaks the ground speed velocity into
+        components aligned with gps coordinate system
+        :return: vel object containing the velocity
+         in the North, East and Z Directions
         """
         ground_speed = self._gps.ground_speed
         bearing = self._odomf.bearing
@@ -243,8 +203,10 @@ class FilterClass:
 
     def finalize_velocity(self):
         """
-        Combines the ground speed and velocity from the imu in a weighted average
-        :return: absolute_vel object containing the velocity in the North, East, and Z directions
+        Combines the ground speed and velocity from
+        the imu in a weighted average
+        :return: absolute_vel object containing the
+        velocity in the North, East, and Z directions
         """
         ground_speed = self.decompose_ground_speed()
         accel = self.generate_absolute_acceleration()
@@ -262,7 +224,8 @@ class FilterClass:
 
     def filter_location(self):
         """
-        Combines the gps data with the velocity added to the old position in a weighted average
+        Combines the gps data with the velocity added
+        to the old position in a weighted average
         :return: object containing componenets of final position of the rover
         """
         old_position = self._odomf
@@ -270,7 +233,8 @@ class FilterClass:
         gps = self._gps
 
         if not filterconfig.meters_to_longitude_minutes:
-            filterconfig.meters_to_longitude_minutes = filterconfig.generate_meters_to_longitude_minutes(gps.lat_deg, gps.lat_min)
+            filterconfig.meters_to_longitude_minutes = \
+                filterconfig.meters_to_long_min(gps.lat_deg, gps.lat_min)
 
         meters_to_longitude_minutes = filterconfig.meters_to_longitude_minutes
         meters_to_latitude_minutes = filterconfig.meters_to_latitude_minutes
@@ -280,73 +244,32 @@ class FilterClass:
         lat_minutes = old_position.lat.minutes + velocity.north \
             * filterconfig.imu_delta_time * meters_to_latitude_minutes
         lat_degrees += filterconfig.calculated_velocity_weight \
-            * (lat_minutes // 60) + filterconfig.gps_loc_weight * gps.lat.degrees
+            * (lat_minutes // 60) + filterconfig.gps_loc_weight \
+            * gps.lat.degrees
         lat_minutes = filterconfig.calculated_velocity_weight \
-            * (lat_minutes % 60) + filterconfig.gps_loc_weight * gps.lat.minutes
+            * (lat_minutes % 60) + filterconfig.gps_loc_weight \
+            * gps.lat.minutes
         lon_minutes = old_position.lat.minutes + velocity.north \
             * filterconfig.imu_delta_time * meters_to_longitude_minutes
         lon_degrees += filterconfig.calculated_velocity_weight \
-            * (lon_minutes // 60) + filterconfig.gps_loc_weight * gps.lon.degrees
+            * (lon_minutes // 60) + filterconfig.gps_loc_weight \
+            * gps.lon.degrees
         lon_minutes = filterconfig.calculated_velocity_weight \
-            * (lon_minutes % 60) + filterconfig.gps_loc_weight * gps.lon.minutes
+            * (lon_minutes % 60) + filterconfig.gps_loc_weight \
+            * gps.lon.minutes
         return gps(lat_degrees, lat_minutes, lon_degrees, lon_minutes)
 
-    ### Bearing Filter Logic
+    async def publishOdom(self, lcm_):
+        while True:
+            print('async af')
+            # self.filter_bearing()
+            # self.filter_location()
+            msg = self._odomf.create_lcm()
+            lcm_.publish('/odometryf', msg.encode())
+            await asyncio.sleep(filterconfig.update_rate)
 
-    def stationary_bearing(self, old_bearing, magnetometer):
-        """
-        Updates the bearing using an average of the old bearing and the value from the magnetometer
-        :param old_bearing: previous final bearing value
-        :param magnetometer: value from the magnetometer lcm message 
-        (if we have 2 magnetometers could be averaged)
-        :return: the final bearing
-        """
-        return (old_bearing + magnetometer) / 2
+        return None
 
-    def turning_bearing(self, old_bearing, gyro, imu_bearing):
-        """
-        Updates the bearing using a weighted average of gyro derived bearing,
-         the old bearing and magnetometer
-        :param old_bearing: previous final bearing value
-        :param gyro: object containing the components of the gyro lcm message
-        :param imu_bearing: degrees from due north
-        :return: the final bearing
-        """
-        return filterconfig.gyro_weight * (old_bearing + gyro.y * filterconfig.delta_time) \
-            + filterconfig.imu_bearing_weight * imu_bearing
-
-    def moving_bearing(self, track_angle, imu_bearing):
-        """
-        Updates the bearing using a weighted average of the track angle and magnetometer
-        :param track_angle: degrees from due north from gps lcm
-        :param imu_bearing: degrees from due north from imu lcm
-        :return: the final bearing
-        """
-        return filterconfig.gps_tracking_angle_weight * track_angle \
-            + filterconfig.imu_bearing_weight * imu_bearing
-
-    def finalize_bearing(self, state, imu_bearing, gyro, track_angle, old_bearing):
-        """
-        Updates the bearing depending on the state of the rover
-        :param state: whether the rover is turning, stationary, or moving
-        :param imu_bearing: degrees from due north
-        :param gyro: object containing the data from the gyro lcm
-        :param track_angle: degrees from due north from the gps lcm
-        :param old_bearing: the previous final bearing
-        :return:
-        """
-        switch = {
-            'stationary': self.stationary_bearing,
-            'turning': self.turning_bearing,
-            'moving': self.moving_bearing
-        }
-
-        args = {
-            'stationary': [old_bearing, imu_bearing],
-            'turning': [old_bearing, gyro, imu_bearing],
-            'moving': [track_angle, imu_bearing]
-        }
-        return switch.get(state, lambda *a: None)(*args.get(state, None))
 
 def main():
     lcm_ = aiolcm.AsyncLCM()
