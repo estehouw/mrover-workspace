@@ -265,7 +265,8 @@ class FilterClass:
             # self.filter_bearing()
             # self.filter_location()
             msg = self._odomf.create_lcm()
-            lcm_.publish('/odometryf', msg.encode())
+            if msg:
+                lcm_.publish('/odometryf', msg.encode())
             await asyncio.sleep(filterconfig.update_rate)
 
         return None
