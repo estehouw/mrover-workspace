@@ -1,39 +1,15 @@
 import time
 import enum
-from math import sin, cos, radians
 from rover_common import aiolcm
 import asyncio
-from rover_msgs import IMU, GPS, NavStatus
+from rover_msgs import IMU, GPS, NavStatus, Odometry
 from rover_common.aiohelper import run_coroutines
-from .rawmessages import raw_imu, raw_gps, nav_status, clean_odom
+from .rawmessages import raw_imu, raw_gps, nav_status
 
+# from rover_msgs import Wheelenc
 
-UNDEFINED = None
+UNDEFINED = 0
 INFREQUENCY = 0.2  # inverse of frequency of slowest sensor (probably GPS)
-delta_time = 0.01
-
-
-class FilterConfig():
-    def __init__(self):
-        self.imu_accel_weight = .5
-        self.imu_bearing_weight = .5
-        self.imu_delta_time = .01
-        self.gyro_weight = .5
-        self.gps_loc_weight = .5
-        self.gps_tracking_angle_weight = .5
-        self.gps_ground_speed_weight = .5
-        self.calculated_velocity_weight = .5
-        self.update_rate = .1
-        self.meters_to_latitude_minutes = 0.0005389625
-        self.EARTH_RADIUS = 6371000
-        self.EARTH_CIRCUM = 40075000
-        self.meters_to_longitude_minutes = None
-
-    def meters_to_long_min(self, lat_deg, lat_min):
-        return 60 / (self.EARTH_CIRCUM * cos(radians(lat_deg + lat_min)) / 360)
-
-
-filterconfig = FilterConfig()
 
 
 class NavState(enum.Enum):
@@ -97,7 +73,6 @@ class FilterClass:
         self._gps = raw_gps()
         self._imu = raw_imu()
         self._navstat = nav_status()
-        self._odomf = clean_odom()
         self._vel = absolute_vel(0, 0, 0)
         self._pitch = 0
 
@@ -106,8 +81,7 @@ class FilterClass:
         print('gps callback called')
         m = GPS.decode(msg)
         self._gps.updateGPS(m)
-        self._odomf.copy_gps(self._gps)
-        print('gps track angle: ' + str(self._gps._track_theta))
+        print('gps track angle: ' + str(self._gps._track_angle))
         return None
 
     def imu_bearing_callback(self, channel, msg):
@@ -268,6 +242,43 @@ class FilterClass:
             if msg:
                 lcm_.publish('/odometryf', msg.encode())
             await asyncio.sleep(filterconfig.update_rate)
+            
+    def filter_bearing(self):
+        self._bearing = self._imu._bearing
+
+    def filter_location(self):
+        self._lat_deg = self._gps._lat_deg
+        self._lat_min = self._gps._lat_min
+        self._long_deg = self._gps._long_deg
+        self._long_min = self._gps._long_min
+
+    def create_odom_lcm(self):
+        # If some part of Odom is uninitialized, return None
+        if self._lat_deg is None or \
+           self._lat_min is None or \
+           self._long_deg is None or \
+           self._long_min is None or \
+           self._bearing is None:
+            return None
+
+        msg = Odometry()
+        msg.latitude_deg = self._lat_deg
+        msg.latitude_min = self._lat_min
+        msg.longitude_deg = self._long_deg
+        msg.longitude_min = self._long_min
+        msg.bearing_deg = self._bearing
+        msg.speed = -1
+        return msg
+
+    # this function is run as a co-routine for publishing fused odometry
+    async def publishOdom(self, lcm_):
+        while True:
+            self.filter_bearing()
+            self.filter_location()
+            msg = self.create_odom_lcm()
+            if msg:
+                lcm_.publish('/odometry', msg.encode())
+            await asyncio.sleep(0.1)
 
         return None
 
