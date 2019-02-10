@@ -5,6 +5,7 @@ import asyncio
 from rover_msgs import IMU, GPS, NavStatus, Odometry
 from rover_common.aiohelper import run_coroutines
 from .rawmessages import raw_imu, raw_gps, nav_status
+from math import sin, cos, radians
 
 # from rover_msgs import Wheelenc
 
