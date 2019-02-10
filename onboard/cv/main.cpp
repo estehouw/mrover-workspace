@@ -28,7 +28,7 @@ float getObstacleMin(float expected){
 
 bool cam_grab_succeed(Camera &cam, int & counter_fail) {
   while (!cam.grab()) {
-    cerr << "grab failed once\n";
+    //cerr << "grab failed once\n"; 
     counter_fail++;
     usleep(1000);
     if (counter_fail > 1000000) {
@@ -60,12 +60,10 @@ void disk_record_init() {
 }
 
 void write_curr_frame_to_disk(Mat &rgb, Mat & depth, int counter ) {
-  if (WRITE_CURR_FRAME_TO_DISK) {
-      cv::imwrite(rgb_foldername +  std::to_string(counter) + std::string(".jpg"), rgb );
-      //std::string file_str = std::string("depth_") + std::to_string(counter);// + std::string(".jpg");
-      
-      cv::imwrite(depth_foldername +  std::to_string(counter) + std::string(".exr"), depth );
-  }
+    cv::imwrite(rgb_foldername +  std::to_string(counter) + std::string(".jpg"), rgb );
+    //std::string file_str = std::string("depth_") + std::to_string(counter);// + std::string(".jpg");
+    
+    cv::imwrite(depth_foldername +  std::to_string(counter) + std::string(".exr"), depth );
 }
 
 int main() {
@@ -75,10 +73,10 @@ int main() {
   int j = 0;
   double frame_time = 0;
   int counter_fail = 0;
-  //#ifdef PERCEPTION_DEBUG
+  #ifdef PERCEPTION_DEBUG
     namedWindow("image",1);
     namedWindow("depth",2);
-  //#endif
+  #endif
   disk_record_init();
 
   /*initialize lcm messages*/
@@ -97,13 +95,15 @@ int main() {
     auto start = chrono::high_resolution_clock::now();
     Mat src = cam.image();
     
-    //#ifdef PERCEPTION_DEBUG
+    #ifdef PERCEPTION_DEBUG
           imshow("image", src);
-    //#endif
+    #endif
           Mat depth_img = cam.depth();
 
     // write to disk if permitted
-    //write_curr_frame_to_disk(src, depth_img, j );
+    if(WRITE_CURR_FRAME_TO_DISK){
+      write_curr_frame_to_disk(src, depth_img, j );
+    }
 
     /*initialize obstacle detection*/
     float pixelWidth = src.cols;
@@ -121,9 +121,9 @@ int main() {
     }
     obstacleMessage.bearing = obstacle_detection.bearing;
 
-    //#ifdef PERCEPTION_DEBUG
+    #ifdef PERCEPTION_DEBUG
     cout << "Turn " << obstacleMessage.bearing << ", detected " << (bool)obstacleMessage.detected<< endl;
-    //#endif
+    #endif
 
     /* Tennis ball detection*/
     vector<Point2f> centers = findTennisBall(src, depth_img);
@@ -136,10 +136,10 @@ int main() {
         tennisMessage.found = true;
         tennisBuffer = 0;
 
-        //#ifdef PERCEPTION_DEBUG
+        #ifdef PERCEPTION_DEBUG
         cout << centers.size() << " tennis ball(s) detected: " << tennisMessage.distance 
                                                         << "m, " << tennisMessage.bearing << "degrees\n";
-        //#endif
+        #endif
 
       }else if(tennisBuffer < 5){   //give 5 frames to recover if tennisball lost due to noise
         tennisBuffer++;
@@ -150,20 +150,20 @@ int main() {
     lcm_.publish("/tennis_ball", &tennisMessage);
     lcm_.publish("/obstacle", &obstacleMessage);
 
-    //#ifdef PERCEPTION_DEBUG
+    #ifdef PERCEPTION_DEBUG
       imshow("depth", depth_img);
       imshow("image", src);
       waitKey(FRAME_WAITKEY);
-    //#endif
+    #endif
     auto end = chrono::high_resolution_clock::now();
 
     auto delta = chrono::duration_cast<chrono::duration<double>>(end - start);
     frame_time += delta.count();
-    //#ifdef PERCEPTION_DEBUG
+    #ifdef PERCEPTION_DEBUG
         if(j % 100 == 0){
             cout << "framerate: " << 1.0f/(frame_time/j) << endl;
         }
-    //#endif
+    #endif
     j++;
   }
 
