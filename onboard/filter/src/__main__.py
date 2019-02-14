@@ -110,7 +110,7 @@ class FilterClass:
         return False
 
     def filter_bearing(self):
-        self._odom._bearing = self._imu._bearing
+        self._odom._bearing = self._imu.linear_moving_avg()
 
     def filter_location(self):
         self._odom._lat_deg = self._gps._lat_deg

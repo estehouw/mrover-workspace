@@ -1,8 +1,9 @@
 import time
+import math
 
 
 class raw_imu:
-    def __init__(self):
+    def __init__(self, num_prev_bearings=5):
         self._acc_x = None
         self._acc_y = None
         self._acc_z = None
@@ -13,6 +14,8 @@ class raw_imu:
         self._mag_y = None
         self._mag_z = None
         self._bearing = None
+        self._prev_bearings = []
+        self._num_prev_bearings = num_prev_bearings
         self._time_of_IMU = time.clock()
 
     def update_imu_bearing(self, message):
@@ -26,7 +29,32 @@ class raw_imu:
         self._mag_y = message.mag_y
         self._mag_z = message.mag_z
         self._bearing = message.bearing
+        self._prev_bearings.append(self._bearing)
+        if len(self._prev_bearings) > self._num_prev_bearings:
+            self._prev_bearings.pop(0)
         self._time_of_IMU = time.clock()
+
+        self.calc_mag_bearing()
+
+    def linear_moving_avg(self):
+        """
+        Calculates a weighted linear moving average over the previous 5
+        bearing readings.
+        """
+        if not self._prev_bearings:
+            return None
+        total_bearings = 0
+        total_weights = 0
+        for i in range(len(self._prev_bearings)):
+            total_bearings += (i + 1) * self._prev_bearings[i]
+            total_weights += (i + 1)
+        return total_bearings / total_weights
+
+    def calc_mag_bearing(self):
+        """Calculates the bearing based on the magnetometer readings."""
+        theta = math.atan2(self._mag_y, self._mag_x)  # radians
+        self._mag_bearing = 90 - theta * 180 / math.pi
+        print('magnetometer bearing: {}'.format(self._mag_bearing))
 
 
 class raw_gps:
