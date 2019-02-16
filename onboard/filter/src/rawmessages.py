@@ -34,7 +34,7 @@ class raw_imu:
             self._prev_bearings.pop(0)
         self._time_of_IMU = time.clock()
 
-        self.calc_mag_bearing()
+        self.calc_pitch_roll_yaw()
 
     def linear_moving_avg(self):
         """
@@ -50,11 +50,26 @@ class raw_imu:
             total_weights += (i + 1)
         return total_bearings / total_weights
 
-    def calc_mag_bearing(self):
+    def calc_pitch_roll_yaw(self):
         """Calculates the bearing based on the magnetometer readings."""
-        theta = math.atan2(self._mag_y, self._mag_x)  # radians
-        self._mag_bearing = 90 - theta * 180 / math.pi
-        print('magnetometer bearing: {}'.format(self._mag_bearing))
+        acc_yz = math.sqrt(math.pow(self._acc_y, 2) + math.pow(self._acc_z, 2))
+        acc_xz = math.sqrt(math.pow(self._acc_x, 2) + math.pow(self._acc_z, 2))
+        self._pitch = 180 * math.atan2(self._acc_x, acc_yz) / math.pi
+        self._roll = 180 * math.atan2(self._acc_y, acc_xz) / math.pi
+        cos_pitch = math.cos(self._pitch)
+        sin_pitch = math.sin(self._pitch)
+        cos_roll = math.cos(self._roll)
+        sin_roll = math.sin(self._roll)
+        partial_mag_x = self._mag_x * cos_pitch
+        partial_mag_y = self._mag_y * sin_roll * sin_pitch
+        partial_mag_z = self._mag_z * cos_roll * sin_pitch
+        mag_x = partial_mag_x + partial_mag_y + partial_mag_z
+        mag_y = self._mag_y * cos_roll - self._mag_z * sin_roll
+        self._yaw = 180 * math.atan2(-mag_y, mag_x) / math.pi
+        print('yaw: {}'.format(self._yaw))
+        # theta = math.atan2(self._mag_y, self._mag_x)  # radians
+        # self._mag_bearing = 90 - theta * 180 / math.pi
+        # print('magnetometer bearing: {}'.format(self._mag_bearing))
 
 
 class raw_gps:
