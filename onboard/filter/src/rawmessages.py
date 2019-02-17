@@ -60,16 +60,18 @@ class raw_imu:
         sin_pitch = math.sin(self._pitch)
         cos_roll = math.cos(self._roll)
         sin_roll = math.sin(self._roll)
-        partial_mag_x = self._mag_x * cos_pitch
-        partial_mag_y = self._mag_y * sin_roll * sin_pitch
-        partial_mag_z = self._mag_z * cos_roll * sin_pitch
-        mag_x = partial_mag_x + partial_mag_y + partial_mag_z
+        partial_mag_xx = self._mag_x * cos_pitch
+        partial_mag_xy = self._mag_y * sin_roll * sin_pitch
+        partial_mag_xz = self._mag_z * cos_roll * sin_pitch
+        mag_x = partial_mag_xx + partial_mag_xy + partial_mag_xz
         mag_y = self._mag_y * cos_roll - self._mag_z * sin_roll
         self._yaw = 180 * math.atan2(-mag_y, mag_x) / math.pi
+        print('pitch: {}'.format(self._pitch))
+        print('roll: {}'.format(self._roll))
         print('yaw: {}'.format(self._yaw))
-        # theta = math.atan2(self._mag_y, self._mag_x)  # radians
-        # self._mag_bearing = 90 - theta * 180 / math.pi
-        # print('magnetometer bearing: {}'.format(self._mag_bearing))
+        theta = math.atan2(self._mag_y, self._mag_x)  # radians
+        self._mag_bearing = 90 - theta * 180 / math.pi
+        print('manual magnetometer bearing: {}'.format(self._mag_bearing))
 
 
 class raw_gps:
