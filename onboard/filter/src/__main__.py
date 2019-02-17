@@ -241,6 +241,7 @@ class FilterClass:
             * (lon_minutes % 60) + filterconfig.gps_loc_weight \
             * gps.lon.minutes
         return gps(lat_degrees, lat_minutes, lon_degrees, lon_minutes)
+
     def filter_bearing(self):
         self._odom._bearing = self._imu.linear_moving_avg()
 
@@ -277,45 +278,6 @@ class FilterClass:
                 lcm_.publish('/odometryf', msg.encode())
             await asyncio.sleep(filterconfig.update_rate)
             
-    def filter_bearing(self):
-        self._bearing = self._imu._bearing
-
-    def filter_location(self):
-        self._lat_deg = self._gps._lat_deg
-        self._lat_min = self._gps._lat_min
-        self._long_deg = self._gps._long_deg
-        self._long_min = self._gps._long_min
-
-    def create_odom_lcm(self):
-        # If some part of Odom is uninitialized, return None
-        if self._lat_deg is None or \
-           self._lat_min is None or \
-           self._long_deg is None or \
-           self._long_min is None or \
-           self._bearing is None:
-            return None
-
-        msg = Odometry()
-        msg.latitude_deg = self._lat_deg
-        msg.latitude_min = self._lat_min
-        msg.longitude_deg = self._long_deg
-        msg.longitude_min = self._long_min
-        msg.bearing_deg = self._bearing
-        msg.speed = -1
-        return msg
-
-    # this function is run as a co-routine for publishing fused odometry
-    async def publishOdom(self, lcm_):
-        while True:
-            self.filter_bearing()
-            self.filter_location()
-            msg = self.create_odom_lcm()
-            if msg:
-                lcm_.publish('/odometry', msg.encode())
-            await asyncio.sleep(0.1)
-
-        return None
-
 
 def main():
     lcm_ = aiolcm.AsyncLCM()
