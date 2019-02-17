@@ -61,70 +61,6 @@ def ensure_lcm(ctx):
     print("Finished installing LCM.")
 
 
-def check_mbed_cli(ctx):
-    """
-    Checks for the existence of mbed CLI in the mbed venv.
-    """
-    if not os.path.exists(ctx.get_mbed_file('bin', 'mbed')):
-        return False
-
-    # TODO clean up
-    if not os.path.exists(
-            os.path.join(ctx.build_intermediate, 'mbed-project')):
-        return False
-
-    return True
-
-
-def ensure_mbed_cli(ctx):
-    """
-    Installs mbed CLI into a custom Python 2 venv.
-    """
-    if check_mbed_cli(ctx):
-        print("mbed CLI already installed, skipping.")
-        return
-
-    ctx.ensure_mbed_env()
-    with ctx.inside_mbed_env():
-        ctx.run("pip install mbed-cli")
-
-        # Make a temporary mbed project in an intermediate dir
-        # TODO clean up
-        with ctx.intermediate('mbed-project'):
-            ctx.run("mbed new .")
-            ctx.run("mbed toolchain GCC_ARM")
-
-
-def check_openocd(ctx):
-    """
-    Checks for the existence of openocd in the mbed venv.
-    """
-    return os.path.exists(ctx.get_mbed_file('bin', 'openocd'))
-
-
-def ensure_openocd(ctx):
-    """
-    Installs openocd into the mbed venv.
-    """
-    if check_openocd(ctx):
-        print("OpenOCD already installed, skipping.")
-        return
-
-    openocd_dir = os.path.join(ctx.third_party_root, 'openocd')
-    ctx.ensure_mbed_env()
-    with ctx.intermediate('openocd'):
-        ctx.run("cp -r {}/* .".format(openocd_dir))
-        print("Configuring OpenOCD...")
-        ctx.run('./bootstrap nosubmodule', hide='both')
-        ctx.run('./configure --prefix={}'.format(ctx.mbed_env), hide='both')
-        print("Building OpenOCD...")
-        ctx.run("make", hide='both')
-        print("Installing OpenOCD...")
-        ctx.run("make install", hide='both')
-
-    print("Finished installing OpenOCD.")
-
-
 def check_rapidjson(ctx):
     """
     Checks for the existence of RapidJson in the product venv.
@@ -151,5 +87,30 @@ def ensure_rapidjson(ctx):
         print("Building rapidjson...")
         ctx.run("cmake --build .")
         print("Installing rapidjson...")
+        ctx.run("cmake --build . --target install")
+        print("Done")
+
+def check_phoenix(ctx):
+    """
+    Checks for the existence of Phoenix in the product venv.
+    """
+    return os.path.exists(ctx.get_product_file('include', 'ctre'))
+
+def ensure_phoenix(ctx):
+    """
+    Installs Phoenix into the product venv.
+    """
+    if check_phoenix(ctx):
+        print("Phoenix already installed, skipping.")
+        return
+
+    phoenix_dir = os.path.join(ctx.third_party_root, 'phoenix')
+    ctx.ensure_product_env()
+    with ctx.intermediate('phoenix'):
+        ctx.run("cp -r {}/* .".format(phoenix_dir))
+        print("Configuring phoenix...")
+        ctx.run("cmake -DCMAKE_INSTALL_PREFIX={} .".format(
+            ctx.product_env))
+        print("Installing phoenix...")
         ctx.run("cmake --build . --target install")
         print("Done")

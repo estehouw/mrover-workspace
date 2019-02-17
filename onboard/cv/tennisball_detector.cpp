@@ -4,31 +4,23 @@
 using namespace std;
 using namespace cv;
 
-//#ifdef PERCEPTION_DEBUG
-struct mouse_data {
-  Mat * hsv;
-  Mat * depth;
-};
-static mouse_data m_data;
+#ifdef PERCEPTION_DEBUG
+
 static Mat hsv;
+static Mat depth;
 /* For debug use: print the HSV values at mouseclick locations */
-void onMouse(int event, int x, int y, int flags, void* param)
-{
-  if (event != EVENT_LBUTTONDOWN) return;
+void onMouse(int event, int x, int y, int flags, void* userdata){
   
-  //char text[100];
-  mouse_data * m_d =  (mouse_data *) param;
-  float d = m_d->depth->at<float>(y,x);
-  Vec3b p = m_d->hsv->at<Vec3b>(y,x);
-  
-  printf("Get mouse click at (%d, %d), HSV value is H: %d, S: %d, V:%d, depth is %.2f meters \n", y, x,
-	 p.val[0], p.val[1], p.val[2], d);
 
-  //sprintf(text, "Depth=%.2f meters at (%d,%d)", p, y, x);
+    if(event == EVENT_LBUTTONUP){
 
-  //putText(img2, text, Point(10,20), FONT_HERSHEY_PLAIN, 2.0, CV_RGB(0,255,0));
+        Vec3b p = hsv.at<Vec3b>(y,x);
+        float d = depth.at<float>(y,x);
+        printf("Get mouse click at (%d, %d), HSV value is H: %d, S: %d, V:%d, depth is %.2f meters \n", y, x,
+	    p.val[0], p.val[1], p.val[2], d);
+    }
 }
-//#endif
+#endif
 
 
 
@@ -47,23 +39,22 @@ Mat greenFilter(const Mat& src){
 
 vector<Point2f> findTennisBall(Mat &src, Mat & depth_src){
   
-    //#ifndef PERCEPTION_DEBUG
+    #ifndef PERCEPTION_DEBUG
     Mat hsv;
-    //#endif
+    #endif
 
     cvtColor(src, hsv, COLOR_BGR2HSV);
 
     Mat mask = greenFilter(hsv);
 
-    //#ifdef PERCEPTION_DEBUG
-    mouse_data * m_d = & m_data;
-    m_d->hsv = &hsv;
-    m_d->depth = &depth_src;
-    imshow("hsv", hsv);
-    setMouseCallback("image", onMouse, (void *)m_d);    
-    imshow("mask", mask);
-    //#endif
+    depth = depth_src;
+    #ifdef PERCEPTION_DEBUG
 
+    imshow("hsv", hsv);
+    setMouseCallback("image", onMouse);    
+    imshow("mask", mask);
+    #endif
+    
     // smoothing
     //medianBlur(mask, mask, 11);
     Size ksize(5,5);
@@ -85,7 +76,7 @@ vector<Point2f> findTennisBall(Mat &src, Mat & depth_src){
     }
 
     
-    //#ifdef PERCEPTION_DEBUG
+    #ifdef PERCEPTION_DEBUG
     /// Draw polygonal contour + bonding rects + circles
     //Mat drawing = Mat::zeros( mask.size(), CV_8UC3);
     for( unsigned i = 0; i< contours.size(); i++ ){
@@ -93,7 +84,7 @@ vector<Point2f> findTennisBall(Mat &src, Mat & depth_src){
         drawContours( src, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
         circle( src, center[i], (int)radius[i], color, 2, 8, 0 );
     }
-    //#endif
-
+    #endif
+    
     return center;
 }

@@ -14,7 +14,7 @@ bool check_divided_window(Mat & rgb_img, int num_splits, Mat & mean_row_vec, int
     #ifdef PERCEPTION_DEBUG
       cout << "Sub[" <<i << "] sum = " << window_sum <<endl;
     #endif
-    if(window_sum < THRESHOLD_NO_SUBWINDOW){ 
+    if(window_sum < THRESHOLD_NO_SUBWINDOW){
       #ifdef PERCEPTION_DEBUG
         rectangle(rgb_img, Point( start_col, SKY_START_ROW), Point( start_col+split_size, RESOLUTION_HEIGHT), Scalar(50, 50, 255), 3);
       #endif
@@ -22,7 +22,7 @@ bool check_divided_window(Mat & rgb_img, int num_splits, Mat & mean_row_vec, int
     }
     start_col+=split_size;  //update the start col
   }
-  return true; //all good 
+  return true; //all good
 }
 
 // Goal: if ahead is safe zone, keep going straight
@@ -68,17 +68,17 @@ pair<int, float> get_final_col(vector<pair<int, float> > & sorted_sums, float mi
   if (max_sum_threshold < middle_sum) {
     return make_pair(-1, middle_sum);
   }
-  
+
   vector<pair<int, float> >::iterator final = lower_bound( sorted_sums.begin(), sorted_sums.end(), make_pair(0, max_sum_threshold), compare_second );
   #ifdef PERCEPTION_DEBUG
     for (vector<pair<int, float> >::iterator it=sorted_sums.begin(); it!=final; it++) cout<<"("<<it->first<<", "<<it->second<<")";
     cout<<endl;
   #endif
-  
+
   if (final == sorted_sums.end()) {
     // go straight if each direction has similar value
     return make_pair(-1, middle_sum);
-    
+
   } else {
     // otherwise, return the one that is cloesest with last time
     int smallest_diff = abs(last_center - (sorted_sums[0].first));
@@ -92,19 +92,19 @@ pair<int, float> get_final_col(vector<pair<int, float> > & sorted_sums, float mi
     }
     return smallest_dist_pair;
   }
-	 
+
 }
 
 // check whether there exists a big obstacle in the front that blocks all directons
 obstacle_return refine_rt(obstacle_return rt_val, pair<int, float> candidate, Size size, int rover_width, Mat & rgb_img, float left_sum, float right_sum) {
-  
+
   float max_sum_sw = candidate.second;
   int final_start_col = candidate.first;
-  
+
   if (max_sum_sw > THRESHOLD_NO_WAY) {
     #ifdef PERCEPTION_DEBUG
-    cout<<"max_sum_sw "<<max_sum_sw<<", col start at "<<final_start_col<<endl;
-    rectangle(rgb_img, Point( final_start_col, 0), Point( final_start_col+rover_width, RESOLUTION_HEIGHT), Scalar(255, 0, 0), 3);
+      cout<<"max_sum_sw "<<max_sum_sw<<", col start at "<<final_start_col<<endl;
+      rectangle(rgb_img, Point( final_start_col, 0), Point( final_start_col+rover_width, RESOLUTION_HEIGHT), Scalar(255, 0, 0), 3);
     #endif
 
     // compute bearing
@@ -119,7 +119,7 @@ obstacle_return refine_rt(obstacle_return rt_val, pair<int, float> candidate, Si
     }
   } else {
     #ifdef PERCEPTION_DEBUG
-    cout<<"Big obstacle in the front. Need to escape from one side!\n";
+      cout<<"Big obstacle in the front. Need to escape from one side!\n";
     #endif
     last_center = (left_sum>right_sum)? 0:RESOLUTION_WIDTH;
     rt_val.bearing =  (left_sum > right_sum)? (-45.0): (45.0);
@@ -135,7 +135,7 @@ obstacle_return avoid_obstacle_sliding_window(Mat &depth_img_src, Mat &rgb_img, 
   depth_img = max(depth_img, 0.7);
   depth_img = min(depth_img, 20.0);
   depth_img = depth_img(Rect( 0, 450,  1280, 250));
-  
+
   blur( depth_img, depth_img, Size( 7, 7 ), Point(-1,-1) );
   Size size = depth_img.size();
   float center_point_depth = (float) depth_img.at<float>(  size.height/2, size.width/2);
@@ -144,7 +144,7 @@ obstacle_return avoid_obstacle_sliding_window(Mat &depth_img_src, Mat &rgb_img, 
   reduce(depth_img, mean_row_vec, 0, CV_REDUCE_SUM, CV_32F);
 
   #ifdef PERCEPTION_DEBUG
-  cout<<"last center "<<last_center<<endl;
+    cout<<"last center "<<last_center<<endl;
   #endif
 
   // check middel col first. If there is no close obstacle in the middle, go straight
@@ -168,7 +168,7 @@ obstacle_return avoid_obstacle_sliding_window(Mat &depth_img_src, Mat &rgb_img, 
     if (i == 1) left_sum = window_sum;
     if (i == num_windows - 1) right_sum = window_sum;
     #ifdef PERCEPTION_DEBUG
-    cout<<"[col "<<curr_col<<"], window sub_col sum is "<<window_sum<<endl;
+      cout<<"[col "<<curr_col<<"], window sub_col sum is "<<window_sum<<endl;
     #endif
     sums[i] = (make_pair(curr_col,window_sum));
   }
